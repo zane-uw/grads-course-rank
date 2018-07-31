@@ -30,19 +30,27 @@ qplot(dat$TimeToDegreeInTerms, binwidth = 1)
 range(dat$TimeToDegreeInTerms)
 
 # remove summer starts and old, old records?
-# dat <- dat %>% filter(yrq >= StudentCohortQtrKeyId)
+dat <- dat %>% filter(yrq >= StudentCohortQtrKeyId)
 
-  # dat <- dat %>% arrange(syskey, mkey, yrq) %>% group_by(syskey, mkey) %>% mutate(qnum = qtr.diff(yrq, min(yrq)) + 1)
-  # table(dat$qnum)
+# remove summer quarter
+dat <- dat %>% filter(get.q(yrq) != 3)
+
+# calculate terms/student, merge back in
+x <- dat %>% select(syskey, yrq) %>% distinct() %>% group_by(syskey) %>% arrange(yrq) %>% mutate(qnum = seq(n()))
+
+dat <- dat %>% inner_join(x)
+
+table(dat$qnum)
+# dat <- dat %>% arrange(syskey, mkey, yrq) %>% group_by(syskey, mkey) %>% mutate(qnum = qtr.diff(yrq, min(yrq)) + 1)
+# table(dat$qnum)
   #
   # wtf <- dat[dat$qnum >= 40,]
   # View(dat[dat$syskey == 892339,])
 
-
-
 # prototype ranks ---------------------------------------------------------
 
-r <- dat %>% group_by(mkey, qnum, ckey) %>% summarize(stus = n()) %>% arrange(desc(stus)) %>% top_n(5, wt = stus)
+r <- dat %>% group_by(mkey, qnum, ckey) %>% summarize(class.pop = n()) %>% arrange(desc(class.pop)) %>% top_n(7, wt = class.pop) %>%
+  ungroup() %>% arrange(mkey, qnum, class.pop)
   # x <- r[r$mkey == "B BUS_10" & r$qnum == 3,]
   # cbind(xtabs(n ~ ckey, data = x))
   #

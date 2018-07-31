@@ -8,7 +8,7 @@ options(theme_set(theme_bw(base_size = 15)))
 
 load("data/raw/raw-data.RData")
 
-kuali <- read_csv("data/raw/programs-kuali.csv")
+kuali <- read_csv("data/raw/programs-kuali.csv")    # ****** FIX THIS, can't use DoNotPublish after all
 
 grads <- grads.raw %>%
   filter(DegreeNum == 1) %>%
