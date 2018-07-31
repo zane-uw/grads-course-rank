@@ -86,7 +86,7 @@ ggplot(data = grads, aes(x = AcademicCareerEntryType, y = TimeToDegreeInYears)) 
 # filter current majors ---------------------------------------------------
 
 cur.maj <- kuali %>%
-  filter(status == "active", str_detect(title, "Minor") == F, is.na(doNotPublish) | doNotPublish == F) %>%
+  filter(status == "active", str_detect(title, "Minor") == F) %>%                                   # is.na(doNotPublish) | doNotPublish == F) %>%
   select(program_code, program_title, program_admissionType, credentialAdmissionType, code, title)
 
 (i <- str_split(cur.maj$code, pattern = "-", 3, simplify = T))
