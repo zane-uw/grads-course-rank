@@ -3,6 +3,7 @@ gc()
 
 library(tidyverse)
 library(edwHelpers)
+library(huxtable)
 
 options(theme_set(theme_bw(base_size = 15)))
 
@@ -11,50 +12,70 @@ load("data/clean/first-degree-grads-and-courses.Rdata")
 
 # mutations ----------------------------------------------------------------
 
-# r <- dat[dat$yrq == 20163,]
-# x <- dat[dat$syskey == 305308,]
-# using time to degree in terms, not years - summer appears to count as a term unless it was the first term
-x <- dat[dat$syskey == 599234,]
-length(unique(x$yrq)); x$TimeToDegreeInTerms[1]
-
-rm(x, r)
-mean(dat$TimeToDegreeInTerms)
-sd(dat$TimeToDegreeInTerms)
-2*sd(dat$TimeToDegreeInTerms)
-
 low <- mean(dat$TimeToDegreeInTerms) - sd(dat$TimeToDegreeInTerms)
 hi <- mean(dat$TimeToDegreeInTerms) + sd(dat$TimeToDegreeInTerms)
 
 dat <- dat %>% filter(TimeToDegreeInTerms >= low, TimeToDegreeInTerms <= hi)
 qplot(dat$TimeToDegreeInTerms, binwidth = 1)
 range(dat$TimeToDegreeInTerms)
-
-# remove summer starts and old, old records?
-dat <- dat %>% filter(yrq >= StudentCohortQtrKeyId)
+rm(hi, low)
 
 # remove summer quarter
 dat <- dat %>% filter(get.q(yrq) != 3)
 
-# calculate terms/student, merge back in
+# calculate terms/student and merge back in
 x <- dat %>% select(syskey, yrq) %>% distinct() %>% group_by(syskey) %>% arrange(yrq) %>% mutate(qnum = seq(n()))
 
 dat <- dat %>% inner_join(x)
-
-table(dat$qnum)
-# dat <- dat %>% arrange(syskey, mkey, yrq) %>% group_by(syskey, mkey) %>% mutate(qnum = qtr.diff(yrq, min(yrq)) + 1)
+rm(x)
 # table(dat$qnum)
-  #
-  # wtf <- dat[dat$qnum >= 40,]
-  # View(dat[dat$syskey == 892339,])
+
+# generate quarter name + # -----------------------------------------------
+
+dat$qtr.abbv <- if_else(get.q(dat$yrq) == 1, "Win",
+                        if_else(get.q(dat$yrq) == 2, "Spr", "Aut"))
+# old fashioned way :(
+x <- dat %>% select(syskey, yrq, qtr.abbv) %>% group_by(syskey, yrq, qtr.abbv) %>% distinct() %>% ungroup()
+x <- x %>% arrange(syskey, qtr.abbv) %>% group_by(syskey, qtr.abbv) %>% mutate(qtr.order = seq_along(qtr.abbv),
+                                                                               term = paste(qtr.abbv, qtr.order, sep = "-"))
+
+dat <- dat %>% inner_join(x) %>% arrange(syskey, yrq)
+rm(x)
+
+dat$qtr.abbv <- factor(dat$qtr.abbv, levels = c("Aut", "Win", "Spr"), ordered = T)
 
 # prototype ranks ---------------------------------------------------------
 
-r <- dat %>% group_by(mkey, qnum, ckey) %>% summarize(class.pop = n()) %>% arrange(desc(class.pop)) %>% top_n(7, wt = class.pop) %>%
-  ungroup() %>% arrange(mkey, qnum, class.pop)
-  # x <- r[r$mkey == "B BUS_10" & r$qnum == 3,]
-  # cbind(xtabs(n ~ ckey, data = x))
-  #
-  #
-  # # r <- r %>% group_by(mkey, qnum) %>% arrange(desc(n)) %>% top_n(10, n) %>% ungroup()
-  #
-  # # rk <- r %>% select(mkey, qnum, ckey, ranking = n) %>% distinct() %>% arrange(mkey, qnum)
+rk <- dat %>%
+  group_by(mkey) %>% mutate(n.maj = n_distinct(syskey)) %>%
+  group_by(mkey, term) %>% mutate(n.maj.qtr = n_distinct(syskey)) %>%
+  group_by(mkey, term, ckey) %>% mutate(n.maj.qtr.class = n_distinct(syskey)) %>%
+  ungroup() %>%
+  group_by(mkey, ckey) %>% mutate(n.maj.class = n_distinct(syskey)) %>% ungroup()
+  # summarize(tot = class.pop = n()) %>%
+  # arrange(desc(class.pop)) %>%
+  # top_n(7, wt = class.pop) %>%
+  # ungroup() %>%
+  # arrange(mkey, qnum, class.pop)
+
+
+b <- rk %>% filter(mkey == "B BUS_10") %>%
+  select(mkey, ckey, term, qtr.abbv, qtr.order, starts_with("n."), program_title, credentialAdmissionType) %>%
+  distinct() %>%
+  arrange(qtr.order, qtr.abbv, -n.maj.qtr.class)
+
+b <- b %>% group_by(mkey, term) %>% arrange(qtr.order, qtr.abbv, -n.maj.qtr.class) %>%             # don't need mkey here but good practice to remember it for later
+  filter(seq_along(n.maj.qtr.class) <= 7)                                           # top_n will keep ties, here I arbitrarily discard them
+
+b <- b %>% mutate(pop.class.total = n.maj.class / n.maj,                            # prop of [stu in major] who [took this class anytime]
+                  pop.in.qtr.total = n.maj.qtr.class / n.maj,                          # prop of [stu in major] who [took this class in this quarter num]
+                  pop.in.qtr.if.class.taken = n.maj.qtr.class / n.maj.class)     # prop of [stu in major who took this class] and [did so in this quarter num]
+
+# now can, e.g., rank classes by quarter
+#   - if someone took that class at all
+b %>% group_by(ckey, add = F) %>% arrange(-pop.class.total, ckey, -pop.in.qtr.if.class.taken)
+
+ggplot(data = b, aes(x = pop.in.qtr.total, y = ckey)) + geom_point() + theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) + facet_grid(.~ qtr.order + qtr.abbv, scales = "free")
+ggplot(data = b, aes(pop.in.qtr.total)) + geom_bar(aes(fill = ckey), position = position_stack(reverse = TRUE)) + theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) + facet_grid(.~ qtr.order + qtr.abbv, scales = "free")
+ggplot(data = b, aes(x = ckey, y = pop.in.qtr.total)) + geom_col(width = .1) + geom_point(size = 1.5) + coord_flip() + theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + facet_grid(rows = vars(qtr.order), cols = vars(qtr.abbv), scales = "free")
+
