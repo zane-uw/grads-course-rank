@@ -6,6 +6,7 @@ library(edwHelpers)
 
 options(theme_set(theme_bw(base_size = 15)))
 
+setwd(rstudioapi::getActiveProject())
 load("data/raw/raw-data.RData")
 
 kuali <- read_csv("data/raw/programs-kuali.csv")    # ****** FIX THIS, can't use DoNotPublish after all
@@ -18,6 +19,7 @@ grads <- grads.raw %>%
 grads$ftfy <- if_else(grads$AcademicCareerEntryType == "FTFY", "FTFY", "EVERYONE ELSE")
 
 courses <- courses.raw %>%
+  filter(course_number >= 100) %>%
   mutate(yrq = (tran_yr * 10) + tran_qtr,
          ckey = paste(trimws(dept_abbrev), course_number, sep = " "),
          grade = as.numeric(recode(trimws(grade),
@@ -93,8 +95,16 @@ i <- str_split(cur.maj$code, pattern = "-", 3, simplify = T)
 i[,2] <- str_pad(i[,2], 2, side = "right", pad = "0")
 cur.maj$mkey <- paste(i[,1], i[,2], sep = "_")
 
-grads$mkey <- str_split(grads$MajorCode, "_", n = 2, simplify = T)[,2]
-
+# there are some majors that inexplicably have reversed codes in the grads file (Phys, HCDE, a few others)
+# this needs a quick fix to swap the 0's to the correct side of the pathway for merging with Kuali data
+# I suppose I could do this the other way and un-pad the majors but I'll stick with this for continuity since
+# other apps use the padded version
+m <- str_split(grads$MajorCode, "_", n = 3, simplify = T)
+m[,3] <- as.numeric(m[,3])
+m[,3] <- str_pad(m[,3], 2, side = "right", pad = "0")
+grads$mkey <- paste(m[,2], m[,3], sep = "_")
+# now safe to filter grads against current majors
+old.majors <- grads[!(grads$mkey %in% cur.maj$mkey),]     # may want to inspect
 grads <- grads[grads$mkey %in% cur.maj$mkey,]
 
 maj <- cur.maj %>% select(mkey, program_title, title, credentialAdmissionType) %>% distinct(mkey, .keep_all = T)

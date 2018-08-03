@@ -10,6 +10,12 @@ options(theme_set(theme_bw(base_size = 15)))
 load("data/clean/first-degree-grads-and-courses.Rdata")
 
 
+
+# diagnostics -------------------------------------------------------------
+
+qplot(data = dat, x = AcademicCareerEntryType, y = DegreeGrantedTransferCredits, geom = 'boxplot')
+qplot(data = dat, x = AcademicCareerEntryType, y = TimeToDegreeInTerms, geom = 'boxplot')
+
 # mutations ----------------------------------------------------------------
 
 low <- mean(dat$TimeToDegreeInTerms) - sd(dat$TimeToDegreeInTerms)
@@ -68,12 +74,8 @@ b <- b %>% group_by(mkey, term) %>% arrange(qtr.order, qtr.abbv, -n.maj.qtr.clas
   filter(seq_along(n.maj.qtr.class) <= 7)                                           # top_n will keep ties, here I arbitrarily discard them
 
 b <- b %>% mutate(pop.class.total = n.maj.class / n.maj,                            # prop of [stu in major] who [took this class anytime]
-                  pop.in.qtr.total = n.maj.qtr.class / n.maj,                          # prop of [stu in major] who [took this class in this quarter num]
-                  pop.in.qtr.if.class.taken = n.maj.qtr.class / n.maj.class)     # prop of [stu in major who took this class] and [did so in this quarter num]
-
-# now can, e.g., rank classes by quarter
-#   - if someone took that class at all
-b %>% group_by(ckey, add = F) %>% arrange(-pop.class.total, ckey, -pop.in.qtr.if.class.taken)
+                  pop.in.qtr.total = n.maj.qtr.class / n.maj,                       # prop of [stu in major] who [took this class in this quarter num]
+                  pop.in.qtr.if.class.taken = n.maj.qtr.class / n.maj.class)        # prop of [stu in major who took this class] and [did so in this quarter num]
 
 ggplot(data = b, aes(x = pop.in.qtr.total, y = ckey)) + geom_point() + theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) + facet_grid(.~ qtr.order + qtr.abbv, scales = "free")
 ggplot(data = b, aes(pop.in.qtr.total)) + geom_bar(aes(fill = ckey), position = position_stack(reverse = TRUE)) + theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) + facet_grid(.~ qtr.order + qtr.abbv, scales = "free")
@@ -141,8 +143,32 @@ ua <- unique(a)
 b$class.order <- factor(a, levels = ua, ordered = T)
 b$class.order <- reorder(b$ckey, as.numeric(b$class.order))
 
-ggplot(data = b, aes(x = o, class.order)) +
+ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2f", round(pop.in.qtr.total, digits = 2)))) +
   geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +
+  geom_text(fontface = 'bold') +
+  scale_y_discrete(limits = rev(unique(sort(b$class.order)))) +
   scale_x_continuous(breaks = b$o, labels = b$term) +
-  scale_fill_distiller(palette = "Purples", direction = 1)
+  scale_fill_viridis_c(direction = -1, option = "C", begin = .5) +       # https://ggplot2.tidyverse.org/reference/scale_viridis.html
+  ylab("Course") +
+  xlab("Quarter") +
+  labs(caption = paste("n students in major:", max(b$n.maj)),
+       fill = "% in quarter",
+       subtitle = paste(unique(b$program_title))) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_line(size = .5, color = 'gray80'))
 
+
+
+
+
+
+# misc summary data -------------------------------------------------------
+
+dat %>% distinct(syskey, degree.yrq) %>% group_by(degree.yrq) %>% summarize(n())
+
+dat %>% distinct(syskey, program_title) %>% group_by(program_title) %>% summarize(n())
+dat %>% distinct(syskey, program_title, degree.yrq) %>% group_by(program_title, degree.yrq) %>% summarize(n())
+
+deg.gpa <- dat %>% distinct(syskey, program_title, DegreeGrantedGPA)
+qplot(data= deg.gpa, x = program_title, y = DegreeGrantedGPA, geom = "boxplot") + coord_flip() + scale_y_continuous(limits = c(1.9, NA))
+rm(deg.gpa)
