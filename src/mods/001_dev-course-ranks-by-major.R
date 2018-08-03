@@ -79,3 +79,70 @@ ggplot(data = b, aes(x = pop.in.qtr.total, y = ckey)) + geom_point() + theme(pan
 ggplot(data = b, aes(pop.in.qtr.total)) + geom_bar(aes(fill = ckey), position = position_stack(reverse = TRUE)) + theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) + facet_grid(.~ qtr.order + qtr.abbv, scales = "free")
 ggplot(data = b, aes(x = ckey, y = pop.in.qtr.total)) + geom_col(width = .1) + geom_point(size = 1.5) + coord_flip() + theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + facet_grid(rows = vars(qtr.order), cols = vars(qtr.abbv), scales = "free")
 
+
+
+
+# comp sci ----------------------------------------------------------------
+
+b <- rk %>% filter(mkey == "C SCI_00") %>%
+  select(mkey, ckey, term, qtr.abbv, qtr.order, starts_with("n."), program_title, credentialAdmissionType) %>%
+  distinct() %>%
+  arrange(qtr.order, qtr.abbv, -n.maj.qtr.class)
+
+b <- b %>% group_by(mkey, term) %>% arrange(qtr.order, qtr.abbv, -n.maj.qtr.class) %>%             # don't need mkey here but good practice to remember it for later
+  filter(seq_along(n.maj.qtr.class) <= 7)                                           # top_n will keep ties, here I arbitrarily discard them
+
+b <- b %>% mutate(pop.class.total = n.maj.class / n.maj,                            # prop of [stu in major] who [took this class anytime]
+                  pop.in.qtr.total = n.maj.qtr.class / n.maj,                          # prop of [stu in major] who [took this class in this quarter num]
+                  pop.in.qtr.if.class.taken = n.maj.qtr.class / n.maj.class)     # prop of [stu in major who took this class] and [did so in this quarter num]
+
+# now can, e.g., rank classes by quarter
+#   - if someone took that class at all
+b %>% group_by(ckey, add = F) %>% arrange(-pop.class.total, ckey, -pop.in.qtr.if.class.taken)
+ggplot(data = b, aes(x = ckey, y = pop.in.qtr.total)) + geom_col(width = .1) + geom_point(size = 1.5) + coord_flip() + theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + facet_grid(rows = vars(qtr.order), cols = vars(qtr.abbv), scales = "free")
+
+b$o <- rep(seq(from = 1, length.out = nrow(b)/7), each = 7)
+tick.labs <- unique(b$term)
+ggplot(data = b, aes(x = o, y = ckey)) + geom_point() + geom_line() + ylab("Course") + xlab("Quarter") + labs(caption = paste(unique(b$program_title))) + scale_x_continuous(breaks = b$o, labels = b$term)
+ggplot(data = b, aes(x = o, y = ckey)) + geom_point(size = b$pop.in.qtr.total*10) + ylab("Course") + xlab("Quarter") + labs(caption = paste(unique(b$program_title))) + scale_x_continuous(breaks = b$o, labels = b$term)
+ggplot(data = b, aes(x = o, ckey)) +
+  geom_point(size = log(100*b$pop.in.qtr.total)) + # geom_line(color = "gray70") +
+  ylab("Course") + xlab("Quarter") + labs(caption = paste(unique(b$program_title))) +
+  scale_y_discrete(limits = rev(unique(sort(b$ckey)))) +
+  scale_x_continuous(breaks = b$o, labels = b$term) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor.x = element_blank())
+
+
+# geom_tile ---------------------------------------------------------------
+
+ggplot(data = b, aes(x = o, ckey)) +
+  geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +
+  ylab("Course") + xlab("Quarter") +
+  labs(caption = paste("n students in major:", max(b$n.maj)),
+       fill = "% in quarter",
+       subtitle = paste(unique(b$program_title))) +
+  scale_y_discrete(limits = rev(unique(sort(b$ckey)))) +
+  scale_x_continuous(breaks = b$o, labels = b$term) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_line(size = .5, color = 'gray80'))
+
+# TODO: wrap the select major and ggplot in a function
+# TODO: intelligent re-ordering of ckey with major at top? Or total popularity top -> bottom?
+
+# try: total pop, top -> bottom as order
+ggplot(data = b, aes(x = o, reorder(ckey, pop.class.total))) +
+  geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +
+  scale_x_continuous(breaks = b$o, labels = b$term) +
+  scale_fill_distiller(palette = "Purples", direction = 1)
+
+# try: major/not major as order
+a <- str_sub(b$ckey, end = 4)
+ua <- unique(a)
+b$class.order <- factor(a, levels = ua, ordered = T)
+b$class.order <- reorder(b$ckey, as.numeric(b$class.order))
+
+ggplot(data = b, aes(x = o, class.order)) +
+  geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +
+  scale_x_continuous(breaks = b$o, labels = b$term) +
+  scale_fill_distiller(palette = "Purples", direction = 1)
+
