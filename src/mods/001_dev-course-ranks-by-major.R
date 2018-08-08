@@ -169,6 +169,9 @@ dat %>% distinct(syskey, degree.yrq) %>% group_by(degree.yrq) %>% summarize(n())
 dat %>% distinct(syskey, program_title) %>% group_by(program_title) %>% summarize(n())
 dat %>% distinct(syskey, program_title, degree.yrq) %>% group_by(program_title, degree.yrq) %>% summarize(n())
 
+<<<<<<< HEAD
 deg.gpa <- dat %>% distinct(syskey, program_title, DegreeGrantedGPA)
 qplot(data= deg.gpa, x = program_title, y = DegreeGrantedGPA, geom = "boxplot") + coord_flip() + scale_y_continuous(limits = c(1.9, NA))
 rm(deg.gpa)
+=======
+>>>>>>> d96ce22055ef347fa3febafa36f22379be7fba17
