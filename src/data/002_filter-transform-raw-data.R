@@ -7,7 +7,7 @@ library(edwHelpers)
 options(theme_set(theme_bw(base_size = 15)))
 
 setwd(rstudioapi::getActiveProject())
-load("data/raw/raw-data.RData")
+load("data/raw/raw-data-5yrs.RData")              #! 5 years/2 here
 
 kuali <- read_csv("data/raw/programs-kuali.csv")    # ****** FIX THIS, can't use DoNotPublish after all
 
@@ -119,8 +119,8 @@ dat <- inner_join(courses, grads, by = "syskey") %>% distinct(syskey, yrq, mkey,
 dat <- dat %>%
   group_by(syskey, DegreeCode) %>%
   filter(yrq <= degree.yrq,
-         StudentCohortQtrKeyId >= 20134,
+         StudentCohortQtrKeyId >= 20084,               #! 20134 --> 20084
          yrq >= StudentCohortQtrKeyId) %>%
   arrange(syskey, mkey, yrq) %>% ungroup()
 
-save(dat, file = "data/clean/first-degree-grads-and-courses.Rdata")
+save(dat, file = "data/clean/first-degree-grads-and-courses-5yrs.Rdata")    #! 5 yrs here

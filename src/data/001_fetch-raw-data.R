@@ -13,7 +13,7 @@ sdbcon <- dbConnect(odbc::odbc(), dns, Database = dabs[2], UID = uid,
 
 grads.raw <- tbl(aicon, in_schema("sec", "IV_StudentDegreeMajorCompletions"))
 grads.raw <- grads.raw %>%
-  filter(DegreeGrantedQtrKeyId >= 20162,
+  filter(DegreeGrantedQtrKeyId >= 20132,           # ED: changed from 2 years to 5 years
          StudentClassCode <= 4,
          DegreeAwardLevelGroup == "Undergraduate") %>%
   collect()
@@ -28,4 +28,5 @@ courses.raw <- courses.raw %>%
 dbDisconnect(aicon)
 dbDisconnect(sdbcon)
 
-save(list = ls(pattern = ".raw"), file = "data/raw/raw-data.RData")
+# save(list = ls(pattern = ".raw"), file = "data/raw/raw-data.RData")
+save(list = ls(pattern = ".raw"), file = "data/raw/raw-data-5yrs.RData")
