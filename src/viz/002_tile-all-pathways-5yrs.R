@@ -3,8 +3,11 @@ gc()
 
 library(tidyverse)
 library(edwHelpers)
+library(RColorBrewer)
 
 setwd(rstudioapi::getActiveProject())
+
+custom.pal <- palette(brewer.pal(5, 'YlGnBu'))
 
 # ggplot2 template --------------------------------------------------------
 
@@ -42,13 +45,18 @@ load("data/clean/first-degree-grads-and-courses-5yrs.Rdata")
 
 dat <- dat %>% filter(dat$AcademicCareerEntryType == "FTFY", get.q(yrq) != 3)
 
-(low <- mean(dat$TimeToDegreeInTerms) - sd(dat$TimeToDegreeInTerms))
-(hi <- mean(dat$TimeToDegreeInTerms) + sd(dat$TimeToDegreeInTerms))
+# (low <- mean(dat$TimeToDegreeInTerms) - sd(dat$TimeToDegreeInTerms))
+# (hi <- mean(dat$TimeToDegreeInTerms) + sd(dat$TimeToDegreeInTerms))
 
-dat <- dat %>% filter(TimeToDegreeInTerms >= low, TimeToDegreeInTerms <= hi)
-qplot(data = dat, x = TimeToDegreeInTerms, binwidth = 1)
+# I'm editing this to a 4-year path
 range(dat$TimeToDegreeInTerms)
-rm(hi, low)
+median(dat$TimeToDegreeInTerms)
+dat <- dat %>% filter(TimeToDegreeInTerms == median(TimeToDegreeInTerms))
+
+# dat <- dat %>% filter(TimeToDegreeInTerms >= low, TimeToDegreeInTerms <= hi)
+# qplot(data = dat, x = TimeToDegreeInTerms, binwidth = 1)
+# range(dat$TimeToDegreeInTerms)
+# rm(hi, low)
 
 # calculate terms/student and merge back in
 x <- dat %>% select(syskey, yrq) %>% distinct() %>% group_by(syskey) %>% arrange(yrq) %>% mutate(qnum = seq(n()))
@@ -70,7 +78,7 @@ rm(x)
 dat$qtr.abbv <- factor(dat$qtr.abbv, levels = c("Aut", "Win", "Spr"), ordered = T)
 
 # check numbers
-table(dat$term)
+table(dat$term)     # nicely 'even' buckets
 
 # create ranks
 rk <- dat %>%
@@ -110,20 +118,23 @@ b <- rk %>% filter(mkey == "PHYS_00")
 # generate ordering for courses by major/not major based on the abbreviations
 b$class.order <- order.courses(b$ckey)
 
-ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2f", round(pop.in.qtr.total, digits = 2)))) +
-  geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +
+# Tweaks suggested by @hlee
+
+ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2i", round(100*pop.in.qtr.total)))) +
+  geom_tile(aes(fill = 100*b$pop.in.qtr.total, alpha = .99)) +
   geom_text(fontface = 'bold') +
   scale_y_discrete(limits = rev(unique(sort(b$class.order)))) +
   scale_x_continuous(breaks = b$o, labels = b$term) +
-  scale_fill_viridis_c(direction = -1, option = "C", begin = .5) +       # https://ggplot2.tidyverse.org/reference/scale_viridis.html
+  scale_fill_gradientn(colors = custom.pal, limits = c(1, 100), guide = "colorbar") +
   ylab("Course") +
   xlab("Quarter") +
+  guides(alpha = F) +
   labs(caption = paste("n students in major:", max(b$n.maj)),
        fill = "% in quarter",
        subtitle = paste(unique(b$title))) +
   theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_line(size = .5, color = 'gray80'))
-
+        panel.grid.minor = element_line(size = .5, color = 'gray80'),
+        panel.background = element_rect(fill = NA))
 
 # wrapper for output ------------------------------------------------------
 
@@ -138,19 +149,21 @@ for(i in 1:length(majors.in)){
 
   fname <- paste(unique(b$mkey), unique(b$title), sep = "-")
 
-  p <- ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2f", round(pop.in.qtr.total, digits = 2)))) +
-    geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +
+  p <- ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2i", round(100*pop.in.qtr.total)))) +
+    geom_tile(aes(fill = 100*b$pop.in.qtr.total, alpha = .98)) +
     geom_text(fontface = 'bold') +
     scale_y_discrete(limits = rev(unique(sort(b$class.order)))) +
     scale_x_continuous(breaks = b$o, labels = b$term) +
-    scale_fill_viridis_c(direction = -1, option = "C", begin = .5) +
+    scale_fill_gradientn(colors = custom.pal, limits = c(1, 100), guide = "colorbar") +
     ylab("Course") +
     xlab("Quarter") +
+    guides(alpha = F) +
     labs(caption = paste("n students in major:", max(b$n.maj)),
          fill = "% in quarter",
          subtitle = paste(unique(b$title))) +
     theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_line(size = .5, color = 'gray80'))
+          panel.grid.minor = element_line(size = .5, color = 'gray80'),
+          panel.background = element_rect(fill = NA))
 
   #! ggsave(fname, path = "vizzes/two years/", plot = p, device = "png", dpi = "print")
   ggsave(fname, path = "vizzes/five years/", plot = p, device = "png", dpi = "print")
