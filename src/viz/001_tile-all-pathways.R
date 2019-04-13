@@ -25,7 +25,7 @@ setwd(rstudioapi::getActiveProject())
 
 # helper functions --------------------------------------------------------
 
-# can't do this using group_by()
+# can't do this using group_by() (well technically that's not true but I'm doing it this way! XP)
 order.courses <- function(x){
   a <- str_sub(x, end = -5)
   ua <- unique(a)

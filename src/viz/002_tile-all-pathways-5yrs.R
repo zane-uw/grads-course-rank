@@ -150,11 +150,11 @@ for(i in 1:length(majors.in)){
   fname <- paste(unique(b$mkey), unique(b$title), sep = "-")
 
   p <- ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2i", round(100*pop.in.qtr.total)))) +
-    geom_tile(aes(fill = 100*b$pop.in.qtr.total, alpha = .98)) +
+    geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +   # alpha = ...
     geom_text(fontface = 'bold') +
     scale_y_discrete(limits = rev(unique(sort(b$class.order)))) +
     scale_x_continuous(breaks = b$o, labels = b$term) +
-    scale_fill_gradientn(colors = custom.pal, limits = c(1, 100), guide = "colorbar") +
+    scale_fill_gradient2(low = "#FFFF9F", mid = "#29AB87", high = "#54278f", midpoint = 50, limits = c(1, 100)) +
     ylab("Course") +
     xlab("Quarter") +
     guides(alpha = F) +
