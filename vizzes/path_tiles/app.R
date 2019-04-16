@@ -38,9 +38,10 @@ server <- function(input, output){
 
   output$table <- renderTable(
     shinydat %>%
-      filter(credential_title == input$cred_input, n.maj.qtr > 5) %>%
+      filter(credential_title == input$cred_input) %>%
       group_by(ckey) %>%
       summarize(n = max(n.maj.class)) %>%
+      filter(n >= 10) %>%
       arrange(desc(n))
   )
 
