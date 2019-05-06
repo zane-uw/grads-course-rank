@@ -28,7 +28,7 @@ custom.pal <- palette(brewer.pal(5, 'YlGnBu'))
 
 # helper functions --------------------------------------------------------
 
-# can't do this using group_by()
+# function to re-order courses w/in groups
 order.courses <- function(x){
   a <- str_sub(x, end = -5)
   ua <- unique(a)
@@ -92,6 +92,7 @@ rk <- dat %>%
 too.small <- rk %>% filter(n.maj < 5)
 # how many? which ones?
 cbind(unique(too.small$mkey))
+write(cbind(unique(too.small$mkey)), file = "data/paths_with_too_few_students.txt", ncolumns = 1, append = F)
 rk <- rk %>% filter(n.maj >= 5)
 
 rk <- rk %>%
@@ -141,7 +142,7 @@ ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2i", round(100*pop.
 # input map: major code (or vector of codes)
 # gen course order -> print
 # setwd("vizzes/take001/")
-majors.in <- unique(rk$mkey)
+majors.in <- sort(unique(rk$mkey))
 for(i in 1:length(majors.in)){
 
   b <- rk %>% filter(mkey == majors.in[i])
@@ -166,5 +167,5 @@ for(i in 1:length(majors.in)){
           panel.background = element_rect(fill = NA))
 
   #! ggsave(fname, path = "vizzes/two years/", plot = p, device = "png", dpi = "print")
-  ggsave(fname, path = "vizzes/five years/", plot = p, device = "png", dpi = "print")
+  ggsave(fname, path = "vizzes/five years/", plot = p, device = "png", dpi = "screen")
 }
