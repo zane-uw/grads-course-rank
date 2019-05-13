@@ -91,7 +91,7 @@ rk <- dat %>%
 
 too.small <- rk %>% filter(n.maj < 5)
 # how many? which ones?
-cbind(unique(too.small$mkey))
+cbind(sort(unique(too.small$mkey)))
 write(cbind(unique(too.small$mkey)), file = "data/paths_with_too_few_students.txt", ncolumns = 1, append = F)
 rk <- rk %>% filter(n.maj >= 5)
 
