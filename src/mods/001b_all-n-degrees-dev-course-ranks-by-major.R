@@ -9,6 +9,16 @@ options(theme_set(theme_bw(base_size = 15)))
 
 load("data/clean/all-degree-grads-and-courses-5yrs.Rdata")
 
+# function to re-order courses w/in groups
+order.courses <- function(x){
+  a <- str_sub(x, end = -5)
+  ua <- unique(a)
+  co <- factor(a, levels = unique(ua), ordered = T)
+  co <- reorder(x, as.numeric(co))
+  return(co)
+}
+
+
 # diagnostics -------------------------------------------------------------
 
 qplot(data = dat, x = AcademicCareerEntryType, y = DegreeGrantedTransferCredits, geom = 'boxplot')
@@ -63,7 +73,7 @@ rk <- dat %>%
   mutate(n.maj.class = n_distinct(system_key)) %>%      # distinct students by major + course (not term as above)
   ungroup()
 
-# save(rk, file = "data/clean/all-degrees-ranked-data.RData")
+save(rk, file = "data/clean/all-degrees-ranked-data.RData")
 
 
 # Create shiny-compatible data --------------------------------------------

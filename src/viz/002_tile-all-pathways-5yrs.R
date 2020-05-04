@@ -39,11 +39,13 @@ order.courses <- function(x){
 
 # setup -------------------------------------------------------------------
 
-load("data/clean/first-degree-grads-and-courses-5yrs.Rdata")
+# load("data/clean/first-degree-grads-and-courses-5yrs.Rdata")
+# load('data/clean/all-degrees-ranked-data.RData')
+load('data/clean/all-degree-grads-and-courses-5yrs.Rdata')
+
 
 # filter; calculate terms/student sequence
-
-dat <- dat %>% filter(dat$AcademicCareerEntryType == "FTFY", get.q(yrq) != 3)
+# dat <- dat %>% filter(dat$AcademicCareerEntryType == "FTFY", get.q(yrq) != 3)
 
 # (low <- mean(dat$TimeToDegreeInTerms) - sd(dat$TimeToDegreeInTerms))
 # (hi <- mean(dat$TimeToDegreeInTerms) + sd(dat$TimeToDegreeInTerms))
@@ -59,7 +61,7 @@ dat <- dat %>% filter(TimeToDegreeInTerms == median(TimeToDegreeInTerms))
 # rm(hi, low)
 
 # calculate terms/student and merge back in
-x <- dat %>% select(syskey, yrq) %>% distinct() %>% group_by(syskey) %>% arrange(yrq) %>% mutate(qnum = seq(n()))
+x <- dat %>% select(system_key, yrq) %>% distinct() %>% group_by(system_key) %>% arrange(yrq) %>% mutate(qnum = seq(n()))
 
 dat <- dat %>% inner_join(x)
 rm(x)
@@ -68,11 +70,11 @@ rm(x)
 dat$qtr.abbv <- if_else(get.q(dat$yrq) == 1, "Win",
                         if_else(get.q(dat$yrq) == 2, "Spr", "Aut"))
 # old fashioned way :(
-x <- dat %>% select(syskey, yrq, qtr.abbv) %>% group_by(syskey, yrq, qtr.abbv) %>% distinct() %>% ungroup()
-x <- x %>% arrange(syskey, qtr.abbv) %>% group_by(syskey, qtr.abbv) %>% mutate(qtr.order = seq_along(qtr.abbv),
+x <- dat %>% select(system_key, yrq, qtr.abbv) %>% group_by(system_key, yrq, qtr.abbv) %>% distinct() %>% ungroup()
+x <- x %>% arrange(system_key, qtr.abbv) %>% group_by(system_key, qtr.abbv) %>% mutate(qtr.order = seq_along(qtr.abbv),
                                                                                term = paste(qtr.abbv, qtr.order, sep = "-"))
 
-dat <- dat %>% inner_join(x) %>% arrange(syskey, yrq)
+dat <- dat %>% inner_join(x) %>% arrange(system_key, yrq)
 rm(x)
 
 dat$qtr.abbv <- factor(dat$qtr.abbv, levels = c("Aut", "Win", "Spr"), ordered = T)
@@ -82,23 +84,31 @@ table(dat$term)     # nicely 'even' buckets
 
 # create ranks
 rk <- dat %>%
-  group_by(mkey) %>% mutate(n.maj = n_distinct(syskey), mean.gpa = mean(DegreeGrantedGPA), med.gpa = median(DegreeGrantedGPA)) %>%
-  group_by(mkey, term) %>% mutate(n.maj.qtr = n_distinct(syskey)) %>%
-  group_by(mkey, term, ckey) %>% mutate(n.maj.qtr.class = n_distinct(syskey)) %>%
+  group_by(major_key) %>% mutate(n.maj = n_distinct(system_key), mean.gpa = mean(DegreeGrantedGPA), med.gpa = median(DegreeGrantedGPA)) %>%
+  group_by(major_key, term) %>% mutate(n.maj.qtr = n_distinct(system_key)) %>%
+  group_by(major_key, term, ckey) %>% mutate(n.maj.qtr.class = n_distinct(system_key)) %>%
   ungroup() %>%
-  group_by(mkey, ckey) %>% mutate(n.maj.class = n_distinct(syskey), mean.grade = mean(grade) / 10, med.grade = median(grade) / 10) %>% ungroup()
+  group_by(major_key, ckey) %>%
+  mutate(n.maj.class = n_distinct(system_key), mean.grade = mean(grade) / 10, med.grade = median(grade) / 10) %>%
+  ungroup()
 
 
 too.small <- rk %>% filter(n.maj < 5)
 # how many? which ones?
-cbind(sort(unique(too.small$mkey)))
-write(cbind(unique(too.small$mkey)), file = "data/paths_with_too_few_students.txt", ncolumns = 1, append = F)
+cbind(sort(unique(too.small$major_key)))
+write(cbind(unique(too.small$major_key)), file = "data/paths_with_too_few_students.txt", ncolumns = 1, append = F)
 rk <- rk %>% filter(n.maj >= 5)
 
-rk <- rk %>%
-  select(mkey, ckey, term, qtr.abbv, qtr.order, starts_with("n."), program_title, title, credentialAdmissionType, starts_with("med."), starts_with("mean.")) %>%
+rk <- rk %>% select(major_key,
+                   starts_with(c('n.', 'med.', 'mean.')),
+                   ckey,
+                   term,
+                   qtr.abbv,
+                   qtr.order,
+                   program_title,
+                   program_admissionType) %>%
   distinct() %>%
-  group_by(mkey, term) %>%
+  group_by(major_key, term) %>%
   arrange(qtr.order, qtr.abbv, -n.maj.qtr.class) %>%
   filter(seq_along(n.maj.qtr.class) <= 7) %>%
   ungroup() %>%
@@ -108,13 +118,14 @@ rk <- rk %>%
 
 
 # term ordering w/ single var
-rk <- rk %>% arrange(qtr.order, qtr.abbv) %>%
+rk <- rk %>%
+  arrange(qtr.order, qtr.abbv) %>%
   mutate(o = rep(seq(from = 1, to = length(rle(rk$term)$lengths)), times = rle(rk$term)$lengths))
 
 table(rk$o, rk$term)
 
 # draw/save function test
-b <- rk %>% filter(mkey == "PHYS_00")
+b <- rk[grepl("ISS O", rk$major_key),] # %>% filter(major_key == "PHYS_00")
 
 # generate ordering for courses by major/not major based on the abbreviations
 b$class.order <- order.courses(b$ckey)
@@ -142,13 +153,13 @@ ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2i", round(100*pop.
 # input map: major code (or vector of codes)
 # gen course order -> print
 # setwd("vizzes/take001/")
-majors.in <- sort(unique(rk$mkey))
+majors.in <- sort(unique(rk$major_key))
 for(i in 1:length(majors.in)){
 
-  b <- rk %>% filter(mkey == majors.in[i])
+  b <- rk %>% filter(major_key == majors.in[i])
   b$class.order <- order.courses(b$ckey)
 
-  fname <- paste(unique(b$mkey), unique(b$title), sep = "-")
+  fname <- paste(unique(b$major_key), unique(b$title), sep = "-")
 
   p <- ggplot(data = b, aes(x = o, class.order, label = sprintf("%0.2i", round(100*pop.in.qtr.total)))) +
     geom_tile(aes(fill = 100*b$pop.in.qtr.total)) +   # alpha = ...

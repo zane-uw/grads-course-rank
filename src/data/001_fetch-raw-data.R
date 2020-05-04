@@ -4,18 +4,17 @@ gc()
 library(tidyverse)
 library(odbc)
 library(dbplyr)
-source("src/config.R")
+# source("src/config.R")
 
-aicon <- dbConnect(odbc::odbc(), dns, Database = dabs[1], UID = uid,
-                   PWD = rstudioapi::askForPassword("pwd-"))
-sdbcon <- dbConnect(odbc::odbc(), dns, Database = dabs[2], UID = uid,
-                   PWD = rstudioapi::askForPassword("pwd-"))
-d <- Sys.Date()
-cur.yrq <- tbl(sdbcon, in_schema("sec", "sys_tbl_39_calendar")) %>%
-  filter(first_day >= d) %>% select(table_key) %>% collect() %>% first(1) %>%     # 2x first to go from tibble -> vector
-  first(1) %>% as.numeric()
+sdbcon <- dbConnect(odbc(), 'sqlserver01')
 
-grads.raw <- tbl(aicon, in_schema("sec", "IV_StudentDegreeMajorCompletions")) %>%
+cur.yrq <- tbl(sdbcon, in_schema('sec', 'sdbdb01')) %>%
+  mutate(x = current_yr*10 + current_qtr) %>%
+  select(x) %>%
+  collect() %>%
+  as.numeric()
+
+grads.raw <- tbl(sdbcon, in_schema("AnalyticInteg.sec", "IV_StudentDegreeMajorCompletions")) %>%
   filter(DegreeGrantedQtrKeyId >= (cur.yrq - 50),           # ED: changed from 2 years to 5 years
          StudentClassCode <= 4,
          DegreeAwardLevelGroup == "Undergraduate") %>%
@@ -33,11 +32,10 @@ programs.raw <- tbl(sdbcon, in_schema("sec", "CM_Programs")) %>%
   collect()
 
 creds.raw <- tbl(sdbcon, in_schema("sec", "CM_Credentials")) %>%
-  filter(credential_status == "active") %>%
+  # filter(credential_status == "active") %>%
   collect() %>%
   filter(grepl("bachelor", credential_title, ignore.case = T) == T)
 
-dbDisconnect(aicon)
 dbDisconnect(sdbcon)
 
 # save(list = ls(pattern = ".raw"), file = "data/raw/raw-data.RData")

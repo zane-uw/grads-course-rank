@@ -1,5 +1,3 @@
-# 04-2019 refactoring to include more years of graduation(s)
-
 rm(list = ls())
 gc()
 
@@ -39,52 +37,6 @@ courses <- courses.raw %>%
   filter(!is.na(grade)) %>%
   select(system_key, yrq, ckey, course_credits, course_branch, grade_system, college, grade) %>%
   arrange(system_key, yrq)
-
-
-    # # some prelim basic data explorations
-    # qplot(grads$TimeToDegreeInTerms, geom = "histogram", binwidth = 1)
-    # (m <- mean(grads$TimeToDegreeInTerms, na.rm = T))
-    # (s <- sd(grads$TimeToDegreeInTerms, na.rm = T))
-    # (cutoff <- m + 2*s)                               # that seems like a lot of terms
-    # p1 <- qplot(grads$TimeToDegreeInTerms, geom = "histogram", binwidth = 1) +
-    #   geom_vline(xintercept = cutoff, color = "red", linetype = 2) +
-    #   geom_vline(xintercept = m, color = "green")
-    # p1
-    #
-    # sub <- grads[grads$AcademicCareerEntryType == "FTFY",]
-    # qplot(sub$TimeToDegreeInTerms, geom = "histogram", binwidth = 1)
-    # (m2 <- mean(sub$TimeToDegreeInTerms, na.rm = T))
-    # (s2 <- sd(sub$TimeToDegreeInTerms, na.rm = T))
-    # (cutoff2 <- m2 + 2*s2)
-    # p2 <- qplot(sub$TimeToDegreeInTerms, geom = "histogram", binwidth = 1) +
-    #   geom_vline(xintercept = cutoff2, color = "red", linetype = 2) +
-    #   geom_vline(xintercept = m2, color = "green")
-    #
-    # cbind(m, m2, s, s2, cutoff, cutoff2)
-    # p1; p2
-    #
-    # ggplot(data = grads, aes(x = TimeToDegreeInTerms)) +
-    #   geom_histogram(binwidth = 1) +
-    #   facet_wrap(c("ftfy"))
-    #
-    # ggplot(data = subset(grads, grads$StudentCohortQtrKeyId >= 20104), aes(x = TimeToDegreeInTerms)) +
-    #   geom_histogram(binwidth = 1) +
-    #   facet_wrap(c("ftfy"))
-    #
-    # # ggplot(data = grads, aes(x = TimeToDegreeInYears, y = MajorCode)) +
-    # #  geom_boxplot()
-    #
-    # ggplot(data = grads, aes(x = AcademicCareerEntryType, y = TimeToDegreeInTerms)) + geom_boxplot()
-    # ggplot(data = grads, aes(x = AcademicCareerEntryType, y = TimeToDegreeInYears)) + geom_boxplot()
-    #
-    # # how about this?
-    # cbind(prop.table(table(grads$StudentCohortQtrKeyId)))
-    # # 20114 is the first q with > 1% of the total
-    #
-    # grads <- grads %>% filter(StudentCohortQtrKeyId >= 20114)
-    # ggplot(data = grads, aes(x = AcademicCareerEntryType, y = TimeToDegreeInYears)) + geom_boxplot()
-    # # much nicer
-
 
 # filter current majors ---------------------------------------------------
 #
